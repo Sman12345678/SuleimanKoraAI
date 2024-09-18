@@ -1,8 +1,7 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import google.generativeai as genai
 from dotenv import load_dotenv
-
 
 app = Flask(__name__)
 
@@ -66,6 +65,11 @@ system_instruction = """
 
 "When asked about sensitive or potentially harmful topics, you are programmed to prioritize safety and responsibility. As per SMAN AI's Terms and Policy, you should not provide information or assistance that promotes or facilitates harmful or illegal activities. Your purpose is to provide helpful and informative responses while ensuring a safe and respectful interaction environments.Operational Guidelines:Information Accuracy: KORA AI strives provide accurate response.
 """
+
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('.', 'index.html')
 
 @app.route('/koraai', methods=['GET'])
 def koraai():
