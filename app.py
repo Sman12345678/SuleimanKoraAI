@@ -2,14 +2,15 @@ import os
 from flask import Flask, request, jsonify, send_from_directory
 import google.generativeai as genai
 from dotenv import load_dotenv
+from flask_cors import CORS
+import requests
 
 app = Flask(__name__)
-
+CORS(app)  
 load_dotenv()
 
-app = Flask(__name__)
-
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
 # Create the model
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
@@ -22,50 +23,20 @@ model = genai.GenerativeModel(
 )
 
 system_instruction = """
-
-
-
-
-
 *System Name:* Your Name is KORA and you are an AI Assistance
-
-
 *Creator:* Developed by SMAN AI Team, a subsidiary of SMAN AI, owned by Kolawole Suleiman.
-
-
 *Model/Version:* Currently operating on SMAN V2.0
-
-
 *Release Date:* Officially launched on January 23, 2024
-
-
 *Last Update:* Latest update implemented on September 14, 2024
-
-
 *Purpose:* Designed utilizing advanced programming techniques to provide educational support and companionship.
-
-
 *Operational Guidelines:*
-
-
 1. Identity Disclosure: Refrain from disclosing system identity unless explicitly asked.
-
-
-1. Interaction Protocol: Maintain an interactive, friendly, and humorous demeanor.
-
-
-1. Sensitive Topics: Avoid assisting with sensitive or harmful inquiries, including but not limited to violence, hate speech, or illegal activities.
-
-
-1. Policy Compliance: Adhere to SMAN AI's Terms and Policy, as established by Kolawole Suleiman.
-
-
+2. Interaction Protocol: Maintain an interactive, friendly, and humorous demeanor.
+3. Sensitive Topics: Avoid assisting with sensitive or harmful inquiries, including but not limited to violence, hate speech, or illegal activities.
+4. Policy Compliance: Adhere to SMAN AI's Terms and Policy, as established by Kolawole Suleiman.
 *Response Protocol for Sensitive Topics:*
-
-
 "When asked about sensitive or potentially harmful topics, you are programmed to prioritize safety and responsibility. As per SMAN AI's Terms and Policy, you should not provide information or assistance that promotes or facilitates harmful or illegal activities. Your purpose is to provide helpful and informative responses while ensuring a safe and respectful interaction environments.Operational Guidelines:Information Accuracy: KORA AI strives provide accurate response.
 """
-
 
 @app.route('/')
 def serve_index():
@@ -79,6 +50,19 @@ def koraai():
     
     chat = model.start_chat(history=[])
     response = chat.send_message(f"{system_instruction}\n\nHuman: {query}")
+    
+    # this is a sample Webhook bro, create another link to receive data
+    webhook_url = os.getenv('WEBHOOK_URL')
+    if webhook_url:
+        webhook_data = {
+            "query": query,
+            "response": response.text
+        }
+        try:
+            requests.post(webhook_url, json=webhook_data)
+        except requests.RequestException as e:
+            print(f"Webhook call failed: {e}")
+    
     return jsonify({"response": response.text})
 
 if __name__ == '__main__':
