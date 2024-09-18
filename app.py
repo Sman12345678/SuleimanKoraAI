@@ -6,7 +6,7 @@ from flask_cors import CORS
 import requests
 
 app = Flask(__name__)
-CORS(app)  
+CORS(app)  # all routes ✌️
 load_dotenv()
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -51,7 +51,7 @@ def koraai():
     chat = model.start_chat(history=[])
     response = chat.send_message(f"{system_instruction}\n\nHuman: {query}")
     
-    # this is a sample Webhook bro, create another link to receive data
+    # Call the webhook
     webhook_url = os.getenv('WEBHOOK_URL')
     if webhook_url:
         webhook_data = {
