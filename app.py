@@ -42,7 +42,7 @@ system_instruction = """
 def serve_index():
     return send_from_directory('.', 'index.html')
 
-@app.route('/koraai', methods=['GET'])
+@app.route('/koraai', methods=['GET','POST'])
 def koraai():
     query = request.args.get('query')
     if not query:
