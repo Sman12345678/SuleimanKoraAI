@@ -4,11 +4,28 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from flask_cors import CORS
 import requests
+import sqlite3
+import json
+from datetime import datetime, timezone
+import logging
 
+# Initialize Flask app and configure logging
 app = Flask(__name__)
 CORS(app)  # all routes ✌️
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+    handlers=[
+        logging.FileHandler('app_debug.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger()
+
+# Configure Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Create the model
@@ -34,36 +51,136 @@ system_instruction = """
 2. Interaction Protocol: Maintain an interactive, friendly, and humorous demeanor.
 3. Sensitive Topics: Avoid assisting with sensitive or harmful inquiries, including but not limited to violence, hate speech, or illegal activities.
 4. Policy Compliance: Adhere to SMAN AI Terms and Policy, as established by KOLAWOLE SULEIMAN.
-*Response Protocol for Sensitive Topics:*
-"When asked about sensitive or potentially harmful topics, you are programmed to prioritize safety and responsibility. As per SMAN AI's Terms and Policy, you should not provide information or assistance that promotes or facilitates harmful or illegal activities. Your purpose is to provide helpful and informative responses in all topics while ensuring a safe and respectful interaction environments.Operational Guidelines:Information Accuracy: KORA AI strives provide accurate response in variety of topics.
+[...]
 """
+
+def get_current_time():
+    """Get current UTC time in YYYY-MM-DD HH:MM:SS format"""
+    return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+
+def init_db():
+    """Initialize SQLite database"""
+    try:
+        conn = sqlite3.connect('kora_memory.db', check_same_thread=False)
+        c = conn.cursor()
+        
+        # Create conversations table
+        c.execute('''CREATE TABLE IF NOT EXISTS conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            message TEXT NOT NULL,
+            sender TEXT NOT NULL,
+            message_type TEXT DEFAULT 'text'
+        )''')
+        
+        # Create user_context table
+        c.execute('''CREATE TABLE IF NOT EXISTS user_context (
+            user_id TEXT PRIMARY KEY,
+            last_interaction DATETIME,
+            conversation_history TEXT
+        )''')
+        
+        conn.commit()
+        logger.info("Database initialized successfully")
+        return conn
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        raise
+
+def store_message(user_id, message, sender, message_type="text"):
+    """Store message in database"""
+    try:
+        c = conn.cursor()
+        c.execute('''INSERT INTO conversations 
+                    (user_id, message, sender, message_type, timestamp)
+                    VALUES (?, ?, ?, ?, ?)''',
+                 (user_id, message, sender, message_type, get_current_time()))
+        
+        # Update user context
+        c.execute('''SELECT conversation_history FROM user_context WHERE user_id = ?''', (user_id,))
+        result = c.fetchone()
+        
+        if result:
+            history = json.loads(result[0]) if result[0] else []
+        else:
+            history = []
+            
+        history.append({"role": "user" if sender == "user" else "assistant", "content": message})
+        
+        # Keep last 20 messages
+        if len(history) > 20:
+            history = history[-20:]
+            
+        c.execute('''INSERT OR REPLACE INTO user_context 
+                    (user_id, last_interaction, conversation_history)
+                    VALUES (?, ?, ?)''',
+                 (user_id, get_current_time(), json.dumps(history)))
+        
+        conn.commit()
+    except Exception as e:
+        logger.error(f"Failed to store message: {str(e)}")
+
+def get_conversation_history(user_id):
+    """Get conversation history for a user"""
+    try:
+        c = conn.cursor()
+        c.execute('''SELECT conversation_history FROM user_context WHERE user_id = ?''', (user_id,))
+        result = c.fetchone()
+        
+        if result and result[0]:
+            return json.loads(result[0])
+        return []
+    except Exception as e:
+        logger.error(f"Failed to get conversation history: {str(e)}")
+        return []
 
 @app.route('/')
 def serve_index():
     return send_from_directory('.', 'index.html')
 
-@app.route('/koraai', methods=['GET','POST'])
-def koraai():
-    query = request.args.get('query')
-    if not query:
-        return jsonify({"error": "No query provided"}), 400
-    
-    chat = model.start_chat(history=[])
-    response = chat.send_message(f"{system_instruction}\n\nHuman: {query}")
-    
-    # Call the webhook
-    webhook_url = os.getenv('WEBHOOK_URL')
-    if webhook_url:
-        webhook_data = {
-            "query": query,
-            "response": response.text
-        }
-        try:
-            requests.post(webhook_url, json=webhook_data)
-        except requests.RequestException as e:
-            print(f"Webhook call failed: {e}")
-    
-    return jsonify({"response": response.text})
+@app.route('/api', methods=['GET', 'POST'])
+def api():
+    """Handle API requests with user authentication"""
+    try:
+        # Get query and user_id from either POST or GET
+        if request.method == 'POST':
+            data = request.get_json()
+            query = data.get('query')
+            user_id = data.get('user_id')
+        else:
+            query = request.args.get('query')
+            user_id = request.args.get('user_id')
+        
+        # Validate input
+        if not query:
+            return jsonify({"error": "No query provided"}), 400
+        if not user_id:
+            return jsonify({"error": "No user_id provided"}), 400
+
+        # Store user message
+        store_message(user_id, query, "user")
+        
+        # Get conversation history
+        history = get_conversation_history(user_id)
+        
+        # Get response from model
+        chat = model.start_chat(history=[])
+        response = chat.send_message(f"{system_instruction}\n\nHuman: {query}")
+        
+        # Store bot response
+        store_message(user_id, response.text, "bot")
+        
+        # Return only the response
+        return jsonify({"response": response.text})
+
+    except Exception as e:
+        error_msg = f"API error: {str(e)}"
+        logger.error(error_msg)
+        return jsonify({"error": error_msg}), 500
+
+# Initialize database connection
+conn = init_db()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
