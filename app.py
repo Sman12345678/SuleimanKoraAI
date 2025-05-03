@@ -72,6 +72,7 @@ When generating responses, format your output using HTML tags for better readabi
 5. <pre><code>...</code></pre> — Wrap all code blocks with this combo to preserve formatting.
    Example:
    <pre><code>for i in range(5):<br>    print(i)</code></pre>
+   Note: for paragraph between code use <br>.
 
 6. <a href="URL">text</a> — Use this to include clickable links.
    Example: <a href="https://example.com">Read more</a>
