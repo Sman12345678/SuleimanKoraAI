@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, g
 import google.generativeai as genai
 from dotenv import load_dotenv
 from flask_cors import CORS
@@ -89,11 +89,25 @@ def get_current_time():
     """Get current UTC time in YYYY-MM-DD HH:MM:SS format"""
     return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
+def get_db():
+    """Get database connection"""
+    if 'db' not in g:
+        g.db = sqlite3.connect('kora_memory.db')
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+@app.teardown_appcontext
+def close_db(error):
+    """Close database connection"""
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
 def init_db():
     """Initialize SQLite database"""
     try:
-        conn = sqlite3.connect('kora_memory.db', check_same_thread=False)
-        c = conn.cursor()
+        db = get_db()
+        c = db.cursor()
         
         # Create conversations table
         c.execute('''CREATE TABLE IF NOT EXISTS conversations (
@@ -112,9 +126,8 @@ def init_db():
             conversation_history TEXT
         )''')
         
-        conn.commit()
+        db.commit()
         logger.info("Database initialized successfully")
-        return conn
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")
         raise
@@ -122,7 +135,8 @@ def init_db():
 def store_message(user_id, message, sender, message_type="text"):
     """Store message in database"""
     try:
-        c = conn.cursor()
+        db = get_db()
+        c = db.cursor()
         c.execute('''INSERT INTO conversations 
                     (user_id, message, sender, message_type, timestamp)
                     VALUES (?, ?, ?, ?, ?)''',
@@ -148,19 +162,31 @@ def store_message(user_id, message, sender, message_type="text"):
                     VALUES (?, ?, ?)''',
                  (user_id, get_current_time(), json.dumps(history)))
         
-        conn.commit()
+        db.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error in store_message: {str(e)}")
+        if db:
+            db.rollback()
+        raise
     except Exception as e:
         logger.error(f"Failed to store message: {str(e)}")
+        if db:
+            db.rollback()
+        raise
 
 def get_conversation_history(user_id):
     """Get conversation history for a user"""
     try:
-        c = conn.cursor()
+        db = get_db()
+        c = db.cursor()
         c.execute('''SELECT conversation_history FROM user_context WHERE user_id = ?''', (user_id,))
         result = c.fetchone()
         
         if result and result[0]:
             return json.loads(result[0])
+        return []
+    except sqlite3.Error as e:
+        logger.error(f"Database error in get_conversation_history: {str(e)}")
         return []
     except Exception as e:
         logger.error(f"Failed to get conversation history: {str(e)}")
@@ -210,8 +236,9 @@ def api():
         logger.error(error_msg)
         return jsonify({"error": error_msg}), 500
 
-# Initialize database connection
-conn = init_db()
+# Initialize database
+with app.app_context():
+    init_db()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
