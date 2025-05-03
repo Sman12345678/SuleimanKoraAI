@@ -88,7 +88,8 @@ Keep responses clean, readable, and helpful. Use tags only when appropriate.
 *Remember to use appropriate tag.*
 just to keep chat fun.
 *Choose random(one at a time)*
-below are stuff available in your local storage:
+
+Below are stuff available in your local storage:
 +++Images+++
 https://i.imgur.com/NlUW9Oe.jpeg 
 https://i.imgur.com/Suk7u4N.jpeg 
@@ -96,6 +97,9 @@ https://i.imgur.com/wX8ZCzc.jpeg
 https://i.imgur.com/uNS7qQj.jpeg
 https://i.imgur.com/Scrsh1O.jpeg
 ++++++
+++++Music+++
+https://raw.githubusercontent.com/Sman12345678/Page-Bot/main/audio/Khalid-Young-Dumb-Broke-via-Naijafinix.com_.mp3 (Young dumb broke)
++++++++
 """
 
 def get_current_time():
