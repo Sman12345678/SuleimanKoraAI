@@ -87,7 +87,7 @@ Keep responses clean, readable, and helpful. Use tags only when appropriate.
 ***Local Storage***
 *Remember to use appropriate tag. For both music and image.*
 just to keep chat fun.
-*Choose random(one at a time)*
+
 
 Below are stuff available in your local storage:
 +++Images+++
