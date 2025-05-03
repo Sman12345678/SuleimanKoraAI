@@ -57,7 +57,7 @@ system_instruction = """
 
 When generating responses, format your output using HTML tags for better readability. Use the tags below as instructed:
 
-1. <br> — Use to insert a line break within a paragraph.
+1. <br> — Use to insert a line break within a paragraph and also importantly within code.
    Example: Hello<br>How can I help?
 
 2. <p> — Wrap regular text in <p> tags to structure paragraphs.
