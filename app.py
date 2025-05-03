@@ -85,7 +85,7 @@ When generating responses, format your output using HTML tags for better readabi
 Keep responses clean, readable, and helpful. Use tags only when appropriate.
 
 ***Local Storage***
-*Remember to use appropriate tag.*
+*Remember to use appropriate tag. For both music and image.*
 just to keep chat fun.
 *Choose random(one at a time)*
 
