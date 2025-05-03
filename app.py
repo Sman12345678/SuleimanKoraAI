@@ -83,6 +83,19 @@ When generating responses, format your output using HTML tags for better readabi
 8. <ul><li>...</li></ul> or <ol> — Use unordered or ordered lists to format items or steps.
 
 Keep responses clean, readable, and helpful. Use tags only when appropriate.
+
+***Local Storage***
+*Remember to use appropriate tag.*
+just to keep chat fun.
+*Choose random(one at a time)*
+below are stuff available in your local storage:
++++Images+++
+https://i.imgur.com/NlUW9Oe.jpeg 
+https://i.imgur.com/Suk7u4N.jpeg 
+https://i.imgur.com/wX8ZCzc.jpeg
+https://i.imgur.com/uNS7qQj.jpeg
+https://i.imgur.com/Scrsh1O.jpeg
+++++++
 """
 
 def get_current_time():
