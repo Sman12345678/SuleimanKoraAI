@@ -82,12 +82,13 @@ When generating responses, format your output using HTML tags for better readabi
 
 8. <ul><li>...</li></ul> or <ol> — Use unordered or ordered lists to format items or steps.
 
+9. <iframe src="url"> - use this tag to show user a particular website or open link. When necessary.
+
 Keep responses clean, readable, and helpful. Use tags only when appropriate.
 
 ***Local Storage***
 *Remember to use appropriate tag. For both music and image.*
 just to keep chat fun.
-*Don't send anything from local storage, unless user request for it.*
 
 
 Below are stuff available in your local storage:
@@ -262,3 +263,4 @@ with app.app_context():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
+    
