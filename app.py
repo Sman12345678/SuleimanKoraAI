@@ -87,6 +87,7 @@ Keep responses clean, readable, and helpful. Use tags only when appropriate.
 Local Storage
 Remember to use appropriate tag. For both music and image.
 just to keep chat fun.
+*Don't send items in your local storage unless user ask for it.*
 
 Below are stuff available in your local storage:
 +++Images+++
@@ -241,6 +242,13 @@ def api():
           
         # Format history for Gemini API
         formatted_history = []
+
+        # Insert system instruction as the first message
+        formatted_history.append({
+            "role": "user",
+            "parts": [system_instruction.strip()]
+        })
+
         for msg in history:
             if msg["role"] == "user":
                 formatted_history.append({"role": "user", "parts": [msg["content"]]})
@@ -249,8 +257,7 @@ def api():
           
         # Get response from model with full conversation history
         chat = model.start_chat(history=formatted_history)
-        # Include the system instruction with each message as in original code
-        response = chat.send_message(f"{system_instruction}\n\nHuman: {query}")
+        response = chat.send_message(query)
           
         # Store bot response  
         store_message(user_id, response.text, "bot")  
