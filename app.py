@@ -11,10 +11,9 @@ import logging
 
 # Initialize Flask app and configure logging
 app = Flask(__name__)
-CORS(app)  # all routes ✌️
+CORS(app)
 load_dotenv()
 
-# Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
@@ -28,7 +27,6 @@ logger = logging.getLogger()
 # Configure Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Create the model
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
     generation_config={
@@ -107,11 +105,9 @@ https://raw.githubusercontent.com/Sman12345678/Page-Bot/main/audio/Khalid-Young-
 """
 
 def get_current_time():
-    """Get current UTC time in YYYY-MM-DD HH:MM:SS format"""
     return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
 def get_db():
-    """Get database connection"""
     if 'db' not in g:
         g.db = sqlite3.connect('kora_memory.db')
         g.db.row_factory = sqlite3.Row
@@ -119,18 +115,14 @@ def get_db():
 
 @app.teardown_appcontext
 def close_db(error):
-    """Close database connection"""
     db = g.pop('db', None)
     if db is not None:
         db.close()
 
 def init_db():
-    """Initialize SQLite database"""
     try:
         db = get_db()
         c = db.cursor()
-        
-        # Create conversations table
         c.execute('''CREATE TABLE IF NOT EXISTS conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
@@ -139,14 +131,11 @@ def init_db():
             sender TEXT NOT NULL,
             message_type TEXT DEFAULT 'text'
         )''')
-        
-        # Create user_context table
         c.execute('''CREATE TABLE IF NOT EXISTS user_context (
             user_id TEXT PRIMARY KEY,
             last_interaction DATETIME,
             conversation_history TEXT
         )''')
-        
         db.commit()
         logger.info("Database initialized successfully")
     except Exception as e:
@@ -154,63 +143,39 @@ def init_db():
         raise
 
 def store_message(user_id, message, sender, message_type="text"):
-    """Store message in database"""
     try:
         db = get_db()
         c = db.cursor()
         c.execute('''INSERT INTO conversations 
-                    (user_id, message, sender, message_type, timestamp)
-                    VALUES (?, ?, ?, ?, ?)''',
-                 (user_id, message, sender, message_type, get_current_time()))
-        
-        # Update user context
-        c.execute('''SELECT conversation_history FROM user_context WHERE user_id = ?''', (user_id,))
+                     (user_id, message, sender, message_type, timestamp)
+                     VALUES (?, ?, ?, ?, ?)''',
+                  (user_id, message, sender, message_type, get_current_time()))
+
+        c.execute('SELECT conversation_history FROM user_context WHERE user_id = ?', (user_id,))
         result = c.fetchone()
-        
-        if result:
-            history = json.loads(result[0]) if result[0] else []
-        else:
-            history = []
-            
+        history = json.loads(result[0]) if result and result[0] else []
+
         history.append({"role": "user" if sender == "user" else "assistant", "content": message})
-        
-        # Keep last 20 messages
-        if len(history) > 20:
-            history = history[-20:]
-            
+        history = history[-20:]
+
         c.execute('''INSERT OR REPLACE INTO user_context 
-                    (user_id, last_interaction, conversation_history)
-                    VALUES (?, ?, ?)''',
-                 (user_id, get_current_time(), json.dumps(history)))
-        
+                     (user_id, last_interaction, conversation_history)
+                     VALUES (?, ?, ?)''',
+                  (user_id, get_current_time(), json.dumps(history)))
         db.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error in store_message: {str(e)}")
-        if db:
-            db.rollback()
-        raise
     except Exception as e:
-        logger.error(f"Failed to store message: {str(e)}")
-        if db:
-            db.rollback()
-        raise
+        logger.error(f"Error in store_message: {str(e)}")
+        db.rollback()
 
 def get_conversation_history(user_id):
-    """Get conversation history for a user"""
     try:
         db = get_db()
         c = db.cursor()
-        c.execute('''SELECT conversation_history FROM user_context WHERE user_id = ?''', (user_id,))
+        c.execute('SELECT conversation_history FROM user_context WHERE user_id = ?', (user_id,))
         result = c.fetchone()
-        
-        if result and result[0]:
-            return json.loads(result[0])
-        return []
-    except sqlite3.Error as e:
-        logger.error(f"Database error in get_conversation_history: {str(e)}")
-        return []
+        return json.loads(result[0]) if result and result[0] else []
     except Exception as e:
-        logger.error(f"Failed to get conversation history: {str(e)}")
+        logger.error(f"Error in get_conversation_history: {str(e)}")
         return []
 
 @app.route('/')
@@ -219,9 +184,7 @@ def serve_index():
 
 @app.route('/api', methods=['GET', 'POST'])
 def api():
-    """Handle API requests with user authentication"""
     try:
-        # Get query and user_id from either POST or GET
         if request.method == 'POST':
             data = request.get_json()
             query = data.get('query')
@@ -229,38 +192,30 @@ def api():
         else:
             query = request.args.get('query')
             user_id = request.args.get('user_id')
-        
-        # Validate input
+
         if not query:
             return jsonify({"error": "No query provided"}), 400
         if not user_id:
             return jsonify({"error": "No user_id provided"}), 400
 
-        # Store user message
         store_message(user_id, query, "user")
-        
-        # Get conversation history
         history = get_conversation_history(user_id)
-        
-        # Get response from model
-        chat = model.start_chat(history=[])
-        response = chat.send_message(f"{system_instruction}\n\nHuman: {query}")
-        
-        # Store bot response
+
+        # Start chat with full history including system instruction
+        full_history = [{"role": "system", "content": system_instruction}] + history
+        chat = model.start_chat(history=full_history)
+        response = chat.send_message(query)
+
         store_message(user_id, response.text, "bot")
-        
-        # Return only the response
         return jsonify({"response": response.text})
 
     except Exception as e:
-        error_msg = f"API error: {str(e)}"
-        logger.error(error_msg)
-        return jsonify({"error": error_msg}), 500
+        logger.error(f"API error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
-# Initialize database
+# Initialize DB
 with app.app_context():
     init_db()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
-    
