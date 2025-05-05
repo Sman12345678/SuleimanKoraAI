@@ -98,7 +98,7 @@ https://i.imgur.com/uNS7qQj.jpeg
 https://i.imgur.com/Scrsh1O.jpeg
 ++++++
 ++++Music++++
-Use audio tag here
+To play the music use <audio> tag here:
 
 https://raw.githubusercontent.com/Sman12345678/Page-Bot/main/audio/Khalid-Young-Dumb-Broke-via-Naijafinix.com_.mp3 (Young dumb broke)
 +++++++
