@@ -249,7 +249,8 @@ def api():
           
         # Get response from model with full conversation history
         chat = model.start_chat(history=formatted_history)
-        response = chat.send_message(query)
+        # Include the system instruction with each message as in original code
+        response = chat.send_message(f"{system_instruction}\n\nHuman: {query}")
           
         # Store bot response  
         store_message(user_id, response.text, "bot")  
