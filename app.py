@@ -58,7 +58,7 @@ Operational Guidelines:
 
 Important
 
-*When generating responses, Always format your output using HTML tags for better readability. Use the tags below as instructed:*
+*When generating responses, ALWAYS format your response using HTML tags for better readability. Use the tags below as instructed:*
 
 1. <br> — Use to insert a line break within a paragraph and also importantly within code.
 Example: Hello<br>How can I help?
