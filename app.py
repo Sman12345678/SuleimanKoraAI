@@ -69,6 +69,7 @@ When generating responses, format your output using HTML tags for better readabi
    Example: <h3>Python</h3>
 
 5. <pre><code>...</code></pre> — Wrap all code blocks with this combo to preserve formatting.
+i.e when user request for a code, use the tag, irrespective of the language (python,html,css etc)
    Example:
    <pre><code>for i in range(5):<br>    print(i)</code></pre>
    <pre><code><!DOCTYPE html><br>....</code></pre>
